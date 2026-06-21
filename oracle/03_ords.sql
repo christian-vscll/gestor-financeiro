@@ -162,13 +162,22 @@ BEGIN
     p_source      =>
       'DECLARE
          l_resposta CLOB;
+         l_json     CLOB;
+         l_pos      NUMBER := 1;
        BEGIN
          pkg_gf_ai.chat(:message, l_resposta);
+         APEX_JSON.initialize_clob_output;
+         APEX_JSON.open_object;
+         APEX_JSON.write(''response'', l_resposta);
+         APEX_JSON.close_object;
+         l_json := APEX_JSON.get_clob_output;
+         APEX_JSON.free_output;
          OWA_UTIL.MIME_HEADER(''application/json'', FALSE);
          OWA_UTIL.HTTP_HEADER_CLOSE;
-         APEX_JSON.OPEN_OBJECT;
-         APEX_JSON.WRITE(''response'', l_resposta);
-         APEX_JSON.CLOSE_OBJECT;
+         WHILE l_pos <= DBMS_LOB.GETLENGTH(l_json) LOOP
+           HTP.P(DBMS_LOB.SUBSTR(l_json, 32000, l_pos));
+           l_pos := l_pos + 32000;
+         END LOOP;
          :status_code := 200;
        END;'
   );
@@ -183,13 +192,22 @@ BEGIN
     p_source      =>
       'DECLARE
          l_resposta CLOB;
+         l_json     CLOB;
+         l_pos      NUMBER := 1;
        BEGIN
          pkg_gf_ai.checkin(l_resposta);
+         APEX_JSON.initialize_clob_output;
+         APEX_JSON.open_object;
+         APEX_JSON.write(''response'', l_resposta);
+         APEX_JSON.close_object;
+         l_json := APEX_JSON.get_clob_output;
+         APEX_JSON.free_output;
          OWA_UTIL.MIME_HEADER(''application/json'', FALSE);
          OWA_UTIL.HTTP_HEADER_CLOSE;
-         APEX_JSON.OPEN_OBJECT;
-         APEX_JSON.WRITE(''response'', l_resposta);
-         APEX_JSON.CLOSE_OBJECT;
+         WHILE l_pos <= DBMS_LOB.GETLENGTH(l_json) LOOP
+           HTP.P(DBMS_LOB.SUBSTR(l_json, 32000, l_pos));
+           l_pos := l_pos + 32000;
+         END LOOP;
          :status_code := 200;
        END;'
   );

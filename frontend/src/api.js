@@ -4,7 +4,7 @@ const postJSON = (url, body) =>
   fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: body ? JSON.stringify(body) : undefined,
+    body: JSON.stringify(body ?? {}),
   }).then(r => r.json())
 
 export const api = {

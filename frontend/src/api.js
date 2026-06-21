@@ -5,7 +5,9 @@ const postJSON = (url, body) =>
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body ?? {}),
-  }).then(r => r.json())
+  }).then(r => r.text()).then(text => {
+    try { return JSON.parse(text) } catch { return { _raw: text, _status: 'parse_error' } }
+  })
 
 export const api = {
   // Transações
@@ -19,8 +21,11 @@ export const api = {
     postJSON(`${BASE}/transacoes/${encodeURIComponent(id)}/ignorar/`),
 
   // Chat
-  checkin: () =>
-    fetch(`${BASE}/chat/checkin/?_=${Date.now()}`).then(r => r.json()),
+  checkin: async () => {
+    const r = await fetch(`${BASE}/chat/checkin/?_=${Date.now()}`)
+    const text = await r.text()
+    try { return JSON.parse(text) } catch { return { response: `[HTTP ${r.status}] ${text.slice(0, 500)}` } }
+  },
   chat: (message) =>
     postJSON(`${BASE}/chat/`, { message }),
   clearHistory: () =>

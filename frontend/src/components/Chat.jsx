@@ -21,10 +21,10 @@ export default function Chat() {
     try {
       const data = await api.checkin()
       setMessages([{ role: 'assistant', content: data.response, id: Date.now() }])
-    } catch {
+    } catch (err) {
       setMessages([{
         role: 'assistant',
-        content: 'Não consegui conectar ao servidor. Verifique a configuração do VITE_API_BASE.',
+        content: `Erro de conexão: ${err.message}`,
         id: Date.now()
       }])
     } finally {

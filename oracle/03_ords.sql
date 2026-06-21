@@ -99,11 +99,15 @@ BEGIN
     p_source      =>
       'DECLARE
          l_resultado CLOB;
+         l_pos       NUMBER := 1;
        BEGIN
          pkg_gf_pierre.sync_transacoes(l_resultado);
          OWA_UTIL.MIME_HEADER(''application/json'', FALSE);
          OWA_UTIL.HTTP_HEADER_CLOSE;
-         HTP.P(l_resultado);
+         WHILE l_pos <= DBMS_LOB.GETLENGTH(l_resultado) LOOP
+           HTP.P(DBMS_LOB.SUBSTR(l_resultado, 32000, l_pos));
+           l_pos := l_pos + 32000;
+         END LOOP;
          :status_code := 200;
        END;'
   );
@@ -281,10 +285,11 @@ END;
 /
 
 -- Habilita CORS para o módulo (necessário para o frontend chamar de outro domínio)
+-- ATENÇÃO: '*' NÃO funciona como wildcard no ORDS — use a URL exata do frontend
 BEGIN
   ORDS.SET_MODULE_ORIGINS_ALLOWED(
     p_module_name     => 'gestor-financeiro',
-    p_origins_allowed => '*'
+    p_origins_allowed => 'https://gestor-financeiro-coral.vercel.app'
   );
   COMMIT;
 END;

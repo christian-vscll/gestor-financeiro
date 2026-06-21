@@ -3,6 +3,7 @@ import { api } from './api'
 import Chat from './components/Chat'
 import ReviewQueue from './components/ReviewQueue'
 import AccountsView from './components/AccountsView'
+import Lancamentos from './components/Lancamentos'
 
 export default function App() {
   const [tab, setTab] = useState('chat')
@@ -39,6 +40,7 @@ export default function App() {
     { id: 'chat', label: 'Chat' },
     { id: 'review', label: 'Revisar', badge: pendingCount },
     { id: 'contas', label: 'Contas' },
+    { id: 'lancamentos', label: 'Lançamentos' },
   ]
 
   return (
@@ -89,7 +91,8 @@ export default function App() {
       <main className="flex-1 overflow-hidden relative">
         <div className={`absolute inset-0 ${tab !== 'chat'   ? 'hidden' : ''}`}><Chat /></div>
         <div className={`absolute inset-0 ${tab !== 'review' ? 'hidden' : ''}`}><ReviewQueue onReviewed={fetchPendingCount} /></div>
-        <div className={`absolute inset-0 ${tab !== 'contas' ? 'hidden' : ''}`}><AccountsView /></div>
+        <div className={`absolute inset-0 ${tab !== 'contas'      ? 'hidden' : ''}`}><AccountsView /></div>
+        <div className={`absolute inset-0 ${tab !== 'lancamentos' ? 'hidden' : ''}`}><Lancamentos /></div>
       </main>
     </div>
   )

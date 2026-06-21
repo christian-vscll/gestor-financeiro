@@ -13,6 +13,10 @@ export const api = {
   // Transações
   getPending: () =>
     fetch(`${BASE}/transacoes/pendentes/`).then(r => r.json()),
+  getExtrato: (params = {}) => {
+    const qs = new URLSearchParams(params).toString()
+    return fetch(`${BASE}/transacoes/extrato/${qs ? '?' + qs : ''}`).then(r => r.json())
+  },
   sync: () =>
     postJSON(`${BASE}/transacoes/sync/`),
   revisar: (id, categoria_confirmada, notas) =>

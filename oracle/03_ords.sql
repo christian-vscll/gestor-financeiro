@@ -89,6 +89,33 @@ BEGIN
         ORDER BY data_transacao DESC'
   );
 
+  -- GET /transacoes/extrato/ — últimos 100 lançamentos com filtro de data
+  ORDS.DEFINE_TEMPLATE('gestor-financeiro', 'transacoes/extrato/');
+  ORDS.DEFINE_HANDLER(
+    p_module_name => 'gestor-financeiro',
+    p_pattern     => 'transacoes/extrato/',
+    p_method      => 'GET',
+    p_source_type => ORDS.source_type_query,
+    p_source      =>
+      'SELECT id,
+              descricao,
+              categoria_pierre,
+              categoria_confirmada,
+              valor,
+              TO_CHAR(data_transacao, ''YYYY-MM-DD'') data_transacao,
+              tipo,
+              conta_nome_marketing,
+              conta_nome,
+              conta_tipo,
+              conta_subtipo,
+              status_revisao
+         FROM gf_transacao
+        WHERE data_transacao >= NVL(TO_DATE(NULLIF(:data_inicio,''''), ''YYYY-MM-DD''), TRUNC(SYSDATE) - 90)
+          AND data_transacao <= NVL(TO_DATE(NULLIF(:data_fim,    ''''), ''YYYY-MM-DD''), TRUNC(SYSDATE) + 1)
+        ORDER BY data_transacao DESC, criado_em DESC
+        FETCH FIRST 100 ROWS ONLY'
+  );
+
   -- POST /transacoes/sync/ — sincroniza transações novas do Pierre
   ORDS.DEFINE_TEMPLATE('gestor-financeiro', 'transacoes/sync/');
   ORDS.DEFINE_HANDLER(

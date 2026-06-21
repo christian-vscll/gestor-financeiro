@@ -228,12 +228,14 @@ BEGIN
          APEX_JSON.open_object;
          APEX_JSON.open_array(''items'');
          FOR r IN (
-           SELECT role,
-                  conteudo,
-                  TO_CHAR(criado_em, ''YYYY-MM-DD"T"HH24:MI:SS'') criado_em
-             FROM gf_chat_mensagem
-            ORDER BY criado_em ASC
-            FETCH FIRST 100 ROWS ONLY
+           SELECT role, conteudo, criado_em FROM (
+             SELECT role,
+                    conteudo,
+                    TO_CHAR(criado_em, ''YYYY-MM-DD"T"HH24:MI:SS'') criado_em
+               FROM gf_chat_mensagem
+              ORDER BY criado_em DESC
+              FETCH FIRST 100 ROWS ONLY
+           ) ORDER BY criado_em ASC
          ) LOOP
            APEX_JSON.open_object;
            APEX_JSON.write(''role'',      r.role);

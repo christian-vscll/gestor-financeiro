@@ -299,8 +299,13 @@ CREATE OR REPLACE PACKAGE BODY pkg_gf_ai AS
       p_body        => l_body
     );
 
-    -- Extrai texto da resposta
-    p_resposta := JSON_VALUE(l_resp, '$.content[0].text' RETURNING CLOB);
+    -- Extrai texto via APEX_JSON (JSON_VALUE RETURNING CLOB é instável no PL/SQL do ADB)
+    BEGIN
+      APEX_JSON.parse(l_resp);
+      p_resposta := TO_CLOB(APEX_JSON.get_varchar2(p_path => 'content[%d].text', p0 => 1));
+    EXCEPTION
+      WHEN OTHERS THEN p_resposta := NULL;
+    END;
 
     IF p_resposta IS NULL THEN
       p_resposta := TO_CLOB('Erro ao processar resposta da IA. Raw: ' || SUBSTR(l_resp, 1, 500));

@@ -20,7 +20,7 @@ export const api = {
 
   // Chat
   checkin: () =>
-    fetch(`${BASE}/chat/checkin/`).then(r => r.json()),
+    fetch(`${BASE}/chat/checkin/?_=${Date.now()}`).then(r => r.json()),
   chat: (message) =>
     postJSON(`${BASE}/chat/`, { message }),
   clearHistory: () =>

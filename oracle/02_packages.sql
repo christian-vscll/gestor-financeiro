@@ -77,8 +77,8 @@ CREATE OR REPLACE PACKAGE BODY pkg_gf_pierre AS
     l_n := NVL(APEX_JSON.get_count(p_path => 'data'), 0);
 
     FOR i IN 1..l_n LOOP
-      l_txn_id   := APEX_JSON.get_varchar2(p_path => 'data[%d].id',   p0 => i);
-      l_data_str := APEX_JSON.get_varchar2(p_path => 'data[%d].date', p0 => i);
+      l_txn_id   := SUBSTR(APEX_JSON.get_varchar2(p_path => 'data[%d].id',   p0 => i), 1, 200);
+      l_data_str := SUBSTR(APEX_JSON.get_varchar2(p_path => 'data[%d].date', p0 => i), 1, 20);
       l_total    := l_total + 1;
 
       SELECT COUNT(*) INTO l_count FROM gf_transacao WHERE id = l_txn_id;
@@ -91,17 +91,17 @@ CREATE OR REPLACE PACKAGE BODY pkg_gf_pierre AS
           status_revisao
         ) VALUES (
           l_txn_id,
-          APEX_JSON.get_varchar2(p_path => 'data[%d].description',            p0 => i),
-          APEX_JSON.get_varchar2(p_path => 'data[%d].category',               p0 => i),
+          SUBSTR(APEX_JSON.get_varchar2(p_path => 'data[%d].description',            p0 => i), 1, 500),
+          SUBSTR(APEX_JSON.get_varchar2(p_path => 'data[%d].category',               p0 => i), 1, 200),
           APEX_JSON.get_number  (p_path => 'data[%d].amount',                 p0 => i),
           APEX_JSON.get_number  (p_path => 'data[%d].balance',                p0 => i),
           TO_DATE(l_data_str, 'YYYY-MM-DD'),
-          APEX_JSON.get_varchar2(p_path => 'data[%d].type',                   p0 => i),
-          APEX_JSON.get_varchar2(p_path => 'data[%d].status',                 p0 => i),
-          APEX_JSON.get_varchar2(p_path => 'data[%d].account_name',           p0 => i),
-          APEX_JSON.get_varchar2(p_path => 'data[%d].account_type',           p0 => i),
-          APEX_JSON.get_varchar2(p_path => 'data[%d].account_subtype',        p0 => i),
-          APEX_JSON.get_varchar2(p_path => 'data[%d].account_marketing_name', p0 => i),
+          SUBSTR(APEX_JSON.get_varchar2(p_path => 'data[%d].type',                   p0 => i), 1, 50),
+          SUBSTR(APEX_JSON.get_varchar2(p_path => 'data[%d].status',                 p0 => i), 1, 50),
+          SUBSTR(APEX_JSON.get_varchar2(p_path => 'data[%d].account_name',           p0 => i), 1, 200),
+          SUBSTR(APEX_JSON.get_varchar2(p_path => 'data[%d].account_type',           p0 => i), 1, 50),
+          SUBSTR(APEX_JSON.get_varchar2(p_path => 'data[%d].account_subtype',        p0 => i), 1, 50),
+          SUBSTR(APEX_JSON.get_varchar2(p_path => 'data[%d].account_marketing_name', p0 => i), 1, 200),
           'pending'
         );
         l_novos := l_novos + 1;
@@ -237,13 +237,27 @@ CREATE OR REPLACE PACKAGE BODY pkg_gf_ai AS
 
   PROCEDURE chat(p_mensagem IN VARCHAR2, p_resposta OUT CLOB) IS
     l_context  CLOB;
-    l_messages CLOB := '';
-    l_sep      VARCHAR2(1) := '';
-    l_msg_full VARCHAR2(32767);
+    l_msg_clob CLOB;
     l_body     CLOB;
     l_resp     CLOB;
   BEGIN
     l_context := build_context;
+
+    -- Mensagem atual com contexto injetado (CLOB evita truncamento em 32767)
+    IF DBMS_LOB.GETLENGTH(l_context) > 0 THEN
+      l_msg_clob := TO_CLOB(p_mensagem) || CHR(10) || CHR(10) ||
+                    '---' || CHR(10) || '[Dados do sistema]' || CHR(10) || l_context;
+    ELSE
+      l_msg_clob := TO_CLOB(p_mensagem);
+    END IF;
+
+    -- Body da requisição via APEX_JSON (escaping correto para CLOBs e chars especiais)
+    APEX_JSON.initialize_clob_output;
+    APEX_JSON.open_object;
+    APEX_JSON.write('model',      'claude-sonnet-4-6');
+    APEX_JSON.write('max_tokens', 2048);
+    APEX_JSON.write('system',     C_SYSTEM);
+    APEX_JSON.open_array('messages');
 
     -- Histórico (últimas 20 mensagens, ordem cronológica)
     FOR r IN (
@@ -252,29 +266,22 @@ CREATE OR REPLACE PACKAGE BODY pkg_gf_ai AS
          ORDER BY criado_em DESC FETCH FIRST 20 ROWS ONLY
       ) ORDER BY criado_em ASC
     ) LOOP
-      l_messages := l_messages || l_sep ||
-        '{"role":"' || r.role || '","content":' || APEX_JSON.STRINGIFY(r.conteudo) || '}';
-      l_sep := ',';
+      APEX_JSON.open_object;
+      APEX_JSON.write('role',    r.role);
+      APEX_JSON.write('content', r.conteudo);
+      APEX_JSON.close_object;
     END LOOP;
 
-    -- Mensagem atual com contexto injetado
-    IF LENGTH(l_context) > 0 THEN
-      l_msg_full := SUBSTR(
-        p_mensagem || CHR(10) || CHR(10) ||
-        '---' || CHR(10) || '[Dados do sistema]' || CHR(10) || l_context,
-        1, 32767
-      );
-    ELSE
-      l_msg_full := p_mensagem;
-    END IF;
+    -- Mensagem atual
+    APEX_JSON.open_object;
+    APEX_JSON.write('role',    'user');
+    APEX_JSON.write('content', l_msg_clob);
+    APEX_JSON.close_object;
 
-    IF l_sep != '' THEN l_messages := l_messages || ','; END IF;
-    l_messages := l_messages || '{"role":"user","content":' || APEX_JSON.STRINGIFY(l_msg_full) || '}';
-
-    -- Body da requisição para Claude
-    l_body := '{"model":"claude-sonnet-4-6","max_tokens":2048,"system":' ||
-              APEX_JSON.STRINGIFY(C_SYSTEM) ||
-              ',"messages":[' || l_messages || ']}';
+    APEX_JSON.close_array;
+    APEX_JSON.close_object;
+    l_body := APEX_JSON.get_clob_output;
+    APEX_JSON.free_output;
 
     -- Chama Claude API
     APEX_WEB_SERVICE.SET_REQUEST_HEADERS(
@@ -306,6 +313,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_gf_ai AS
     COMMIT;
   EXCEPTION
     WHEN OTHERS THEN
+      APEX_JSON.free_output;
       ROLLBACK;
       p_resposta := TO_CLOB('Erro: ' || SQLERRM);
   END;

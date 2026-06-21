@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { api } from './api'
 import Chat from './components/Chat'
 import ReviewQueue from './components/ReviewQueue'
 import AccountsView from './components/AccountsView'
@@ -11,9 +12,9 @@ export default function App() {
 
   const fetchPendingCount = async () => {
     try {
-      const res = await fetch('/api/transactions/pending')
-      const data = await res.json()
-      setPendingCount(Array.isArray(data) ? data.length : 0)
+      const data = await api.getPending()
+      const items = data.items ?? (Array.isArray(data) ? data : [])
+      setPendingCount(items.length)
     } catch {}
   }
 
@@ -23,9 +24,8 @@ export default function App() {
     setSyncing(true)
     setSyncMsg('')
     try {
-      const res = await fetch('/api/transactions/sync', { method: 'POST' })
-      const data = await res.json()
-      setSyncMsg(`+${data.new} novos`)
+      const data = await api.sync()
+      setSyncMsg(`+${data.new ?? 0} novos`)
       await fetchPendingCount()
       setTimeout(() => setSyncMsg(''), 3000)
     } catch {

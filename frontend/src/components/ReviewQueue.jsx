@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { api } from '../api'
 
 const CATEGORIES = [
   'Alimentação', 'Transporte', 'Moradia', 'Saúde', 'Lazer',
@@ -15,15 +16,15 @@ function fmt(amount) {
 
 function TransactionCard({ txn, onConfirm, onIgnore }) {
   const [editing, setEditing] = useState(false)
-  const [category, setCategory] = useState(txn.pierre_category || '')
+  const [category, setCategory] = useState(txn.categoria_pierre || '')
   const [note, setNote] = useState('')
   const [loading, setLoading] = useState(false)
 
-  const isDebit = (txn.amount || 0) < 0
+  const isDebit = (txn.valor || 0) < 0
 
   const handleConfirm = async () => {
     setLoading(true)
-    await onConfirm(txn.id, category || txn.pierre_category, note)
+    await onConfirm(txn.id, category || txn.categoria_pierre, note)
   }
 
   const handleIgnore = async () => {
@@ -35,14 +36,14 @@ function TransactionCard({ txn, onConfirm, onIgnore }) {
     <div className="bg-zinc-900 rounded-xl p-4 space-y-3 border border-zinc-800/60">
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium leading-snug">{txn.description}</p>
+          <p className="text-sm font-medium leading-snug">{txn.descricao}</p>
           <p className="text-xs text-zinc-500 mt-0.5">
-            {txn.date} · {txn.account_marketing_name || txn.account_name}
+            {txn.data_transacao} · {txn.conta_nome_marketing || txn.conta_nome}
           </p>
         </div>
         <span className={`text-sm font-semibold whitespace-nowrap tabular-nums
           ${isDebit ? 'text-red-400' : 'text-emerald-400'}`}>
-          {fmt(txn.amount || 0)}
+          {fmt(txn.valor || 0)}
         </span>
       </div>
 
@@ -68,7 +69,7 @@ function TransactionCard({ txn, onConfirm, onIgnore }) {
       ) : (
         <div className="flex items-center gap-2">
           <span className="text-xs bg-zinc-800 px-2.5 py-1 rounded-md text-zinc-400">
-            {txn.pierre_category || 'Sem categoria'}
+            {txn.categoria_pierre || 'Sem categoria'}
           </span>
           <button
             onClick={() => setEditing(true)}
@@ -106,24 +107,22 @@ export default function ReviewQueue({ onReviewed }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetch('/api/transactions/pending')
-      .then(r => r.json())
-      .then(data => setTransactions(Array.isArray(data) ? data : []))
+    api.getPending()
+      .then(data => {
+        const items = data.items ?? (Array.isArray(data) ? data : [])
+        setTransactions(items)
+      })
       .finally(() => setLoading(false))
   }, [])
 
   const handleConfirm = async (id, category, note) => {
-    await fetch(`/api/transactions/${encodeURIComponent(id)}/review`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ confirmed_category: category, notes: note }),
-    })
+    await api.revisar(id, category, note)
     setTransactions(prev => prev.filter(t => t.id !== id))
     onReviewed?.()
   }
 
   const handleIgnore = async (id) => {
-    await fetch(`/api/transactions/${encodeURIComponent(id)}/ignore`, { method: 'PATCH' })
+    await api.ignorar(id)
     setTransactions(prev => prev.filter(t => t.id !== id))
     onReviewed?.()
   }

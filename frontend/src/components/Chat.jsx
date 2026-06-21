@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { api } from '../api'
 
 export default function Chat() {
   const [messages, setMessages] = useState([])
@@ -18,13 +19,12 @@ export default function Chat() {
   const doCheckin = async () => {
     setLoading(true)
     try {
-      const res = await fetch('/api/chat/checkin')
-      const data = await res.json()
+      const data = await api.checkin()
       setMessages([{ role: 'assistant', content: data.response, id: Date.now() }])
     } catch {
       setMessages([{
         role: 'assistant',
-        content: 'Não consegui conectar ao servidor. Verifique se o backend está rodando.',
+        content: 'Não consegui conectar ao servidor. Verifique a configuração do VITE_API_BASE.',
         id: Date.now()
       }])
     } finally {
@@ -41,12 +41,7 @@ export default function Chat() {
     setLoading(true)
 
     try {
-      const res = await fetch('/api/chat/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text }),
-      })
-      const data = await res.json()
+      const data = await api.chat(text)
       setMessages(prev => [...prev, {
         role: 'assistant',
         content: data.response,

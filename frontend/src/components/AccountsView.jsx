@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { api } from '../api'
 
 function fmt(value) {
   if (value == null) return '—'
@@ -21,8 +22,8 @@ export default function AccountsView() {
 
   useEffect(() => {
     Promise.all([
-      fetch('/api/accounts/balance').then(r => r.json()).catch(() => null),
-      fetch('/api/accounts/bills').then(r => r.json()).catch(() => null),
+      api.getSaldo().catch(() => null),
+      api.getFaturas().catch(() => null),
     ]).then(([b, bl]) => {
       setBalance(b)
       setBills(bl)

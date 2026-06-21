@@ -28,6 +28,8 @@ export const api = {
   },
   chat: (message) =>
     postJSON(`${BASE}/chat/`, { message }),
+  getHistory: () =>
+    fetch(`${BASE}/chat/historico/`).then(r => r.json()),
   clearHistory: () =>
     fetch(`${BASE}/chat/historico/`, { method: 'DELETE' }).then(r => r.json()),
 

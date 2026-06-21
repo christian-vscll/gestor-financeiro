@@ -217,6 +217,19 @@ BEGIN
   ORDS.DEFINE_HANDLER(
     p_module_name => 'gestor-financeiro',
     p_pattern     => 'chat/historico/',
+    p_method      => 'GET',
+    p_source_type => ORDS.source_type_query,
+    p_source      =>
+      'SELECT role,
+              conteudo,
+              TO_CHAR(criado_em, ''YYYY-MM-DD"T"HH24:MI:SS'') criado_em
+         FROM gf_chat_mensagem
+        ORDER BY criado_em ASC
+        FETCH FIRST 100 ROWS ONLY'
+  );
+  ORDS.DEFINE_HANDLER(
+    p_module_name => 'gestor-financeiro',
+    p_pattern     => 'chat/historico/',
     p_method      => 'DELETE',
     p_source_type => ORDS.source_type_plsql,
     p_source      =>

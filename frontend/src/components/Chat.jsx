@@ -13,22 +13,42 @@ export default function Chat() {
   }, [messages])
 
   useEffect(() => {
-    doCheckin()
+    loadHistory()
   }, [])
 
-  const doCheckin = async () => {
+  const loadHistory = async () => {
     setLoading(true)
     try {
-      const data = await api.checkin()
-      setMessages([{ role: 'assistant', content: data.response, id: Date.now() }])
+      const histData = await api.getHistory()
+      const items = histData?.items ?? []
+
+      if (items.length > 0) {
+        setMessages(items.map((m, i) => ({ role: m.role, content: m.conteudo, id: i })))
+
+        // Só faz checkin se última mensagem tem mais de 4h
+        const lastTime = new Date(items[items.length - 1].criado_em)
+        const hoursAgo = (Date.now() - lastTime.getTime()) / 36e5
+        if (hoursAgo >= 4) await doCheckin()
+      } else {
+        await doCheckin()
+      }
     } catch (err) {
-      setMessages([{
+      setMessages([{ role: 'assistant', content: `Erro de conexão: ${err.message}`, id: Date.now() }])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const doCheckin = async () => {
+    try {
+      const data = await api.checkin()
+      setMessages(prev => [...prev, { role: 'assistant', content: data.response, id: Date.now() }])
+    } catch (err) {
+      setMessages(prev => [...prev, {
         role: 'assistant',
         content: `Erro de conexão: ${err.message}`,
         id: Date.now()
       }])
-    } finally {
-      setLoading(false)
     }
   }
 

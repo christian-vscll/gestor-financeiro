@@ -42,7 +42,20 @@ export default function AccountsView() {
   const balData = balance?.data
   const totalBalance = balData?.totalBalance ?? balData?.total_balance ?? balData?.balance
   const accounts = balData?.accounts ?? []
-  const billsArr = Array.isArray(bills?.data) ? bills.data : []
+
+  const today = new Date()
+  const cutoff = new Date(today)
+  cutoff.setMonth(cutoff.getMonth() - 1)
+
+  const billsArr = (Array.isArray(bills?.data) ? bills.data : []).filter(bill => {
+    const status = (bill.status ?? '').toUpperCase()
+    if (status === 'FUTURE') return false
+    const amount = bill.amount ?? bill.total ?? bill.totalAmount ?? 0
+    if (!amount || Number(amount) === 0) return false
+    const due = new Date(bill.due_date ?? bill.close_date ?? bill.dueDate ?? '')
+    if (!isNaN(due.getTime())) return due >= cutoff
+    return true
+  })
 
   return (
     <div className="h-full overflow-y-auto p-4 space-y-4 scrollbar-thin">

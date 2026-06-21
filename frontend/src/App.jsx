@@ -85,11 +85,11 @@ export default function App() {
         ))}
       </nav>
 
-      {/* Content */}
-      <main className="flex-1 overflow-hidden">
-        {tab === 'chat' && <Chat />}
-        {tab === 'review' && <ReviewQueue onReviewed={fetchPendingCount} />}
-        {tab === 'contas' && <AccountsView />}
+      {/* Content — componentes sempre montados para preservar estado */}
+      <main className="flex-1 overflow-hidden relative">
+        <div className={`absolute inset-0 ${tab !== 'chat'   ? 'hidden' : ''}`}><Chat /></div>
+        <div className={`absolute inset-0 ${tab !== 'review' ? 'hidden' : ''}`}><ReviewQueue onReviewed={fetchPendingCount} /></div>
+        <div className={`absolute inset-0 ${tab !== 'contas' ? 'hidden' : ''}`}><AccountsView /></div>
       </main>
     </div>
   )

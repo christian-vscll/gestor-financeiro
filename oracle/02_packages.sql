@@ -254,7 +254,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_gf_ai AS
     -- Body da requisição via APEX_JSON (escaping correto para CLOBs e chars especiais)
     APEX_JSON.initialize_clob_output;
     APEX_JSON.open_object;
-    APEX_JSON.write('model',      'claude-sonnet-4-6');
+    APEX_JSON.write('model',      'claude-haiku-4-5-20251001');
     APEX_JSON.write('max_tokens', 2048);
     APEX_JSON.write('system',     C_SYSTEM);
     APEX_JSON.open_array('messages');
@@ -283,7 +283,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_gf_ai AS
     l_body := APEX_JSON.get_clob_output;
     APEX_JSON.free_output;
 
-    -- Chama Claude API
+    -- Chama Claude API (Haiku: mais rápido e econômico, suficiente para o caso de uso)
     APEX_WEB_SERVICE.SET_REQUEST_HEADERS(
       p_name_01  => 'x-api-key',
       p_value_01 => pkg_gf_pierre.get_config('ANTHROPIC_API_KEY'),

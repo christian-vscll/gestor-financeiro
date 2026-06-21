@@ -57,41 +57,31 @@ CREATE OR REPLACE PACKAGE BODY pkg_gf_pierre AS
     l_total      NUMBER := 0;
     l_novos      NUMBER := 0;
     l_count      NUMBER;
+    l_n          NUMBER;
+    l_txn_id     VARCHAR2(200);
+    l_data_str   VARCHAR2(20);
   BEGIN
-    -- Data de início: 1 dia antes do último sync (overlap de segurança)
-    SELECT TO_CHAR(MAX(synced_at) - 1, 'YYYY-MM-DD')
+    -- CAST evita erro de aritmética com TIMESTAMP (DATE - NUMBER é válido, TIMESTAMP não)
+    SELECT TO_CHAR(CAST(MAX(synced_at) AS DATE) - 1, 'YYYY-MM-DD')
       INTO l_start_date FROM gf_sync_log;
 
     IF l_start_date IS NULL THEN
-      l_start_date := TO_CHAR(SYSDATE - 90, 'YYYY-MM-DD'); -- Primeiro sync: 3 meses
+      l_start_date := TO_CHAR(SYSDATE - 90, 'YYYY-MM-DD');
     END IF;
 
     l_resp := call_get('get-transactions',
       'startDate=' || l_start_date || '&endDate=' || l_end_date || '&format=raw');
 
-    -- Parseia array de transações com JSON_TABLE
-    FOR r IN (
-      SELECT jt.txn_id, jt.descricao, jt.categoria, jt.valor, jt.saldo,
-             jt.data_str, jt.tipo, jt.status,
-             jt.conta_nome, jt.conta_tipo, jt.conta_subtipo, jt.conta_marketing
-        FROM JSON_TABLE(l_resp, '$.data[*]' COLUMNS (
-          txn_id        VARCHAR2(200) PATH '$.id',
-          descricao     VARCHAR2(500) PATH '$.description',
-          categoria     VARCHAR2(200) PATH '$.category',
-          valor         NUMBER        PATH '$.amount',
-          saldo         NUMBER        PATH '$.balance',
-          data_str      VARCHAR2(20)  PATH '$.date',
-          tipo          VARCHAR2(50)  PATH '$.type',
-          status        VARCHAR2(50)  PATH '$.status',
-          conta_nome    VARCHAR2(200) PATH '$.account_name',
-          conta_tipo    VARCHAR2(50)  PATH '$.account_type',
-          conta_subtipo VARCHAR2(50)  PATH '$.account_subtype',
-          conta_marketing VARCHAR2(200) PATH '$.account_marketing_name'
-        )) jt
-    ) LOOP
-      l_total := l_total + 1;
+    -- APEX_JSON evita limitação de JSON_TABLE com variável CLOB em cursor PL/SQL
+    APEX_JSON.parse(l_resp);
+    l_n := NVL(APEX_JSON.get_count(p_path => 'data'), 0);
 
-      SELECT COUNT(*) INTO l_count FROM gf_transacao WHERE id = r.txn_id;
+    FOR i IN 1..l_n LOOP
+      l_txn_id   := APEX_JSON.get_varchar2(p_path => 'data[%d].id',   p0 => i);
+      l_data_str := APEX_JSON.get_varchar2(p_path => 'data[%d].date', p0 => i);
+      l_total    := l_total + 1;
+
+      SELECT COUNT(*) INTO l_count FROM gf_transacao WHERE id = l_txn_id;
 
       IF l_count = 0 THEN
         INSERT INTO gf_transacao (
@@ -100,9 +90,18 @@ CREATE OR REPLACE PACKAGE BODY pkg_gf_pierre AS
           conta_nome, conta_tipo, conta_subtipo, conta_nome_marketing,
           status_revisao
         ) VALUES (
-          r.txn_id, r.descricao, r.categoria, r.valor, r.saldo,
-          TO_DATE(r.data_str, 'YYYY-MM-DD'), r.tipo, r.status,
-          r.conta_nome, r.conta_tipo, r.conta_subtipo, r.conta_marketing,
+          l_txn_id,
+          APEX_JSON.get_varchar2(p_path => 'data[%d].description',            p0 => i),
+          APEX_JSON.get_varchar2(p_path => 'data[%d].category',               p0 => i),
+          APEX_JSON.get_number  (p_path => 'data[%d].amount',                 p0 => i),
+          APEX_JSON.get_number  (p_path => 'data[%d].balance',                p0 => i),
+          TO_DATE(l_data_str, 'YYYY-MM-DD'),
+          APEX_JSON.get_varchar2(p_path => 'data[%d].type',                   p0 => i),
+          APEX_JSON.get_varchar2(p_path => 'data[%d].status',                 p0 => i),
+          APEX_JSON.get_varchar2(p_path => 'data[%d].account_name',           p0 => i),
+          APEX_JSON.get_varchar2(p_path => 'data[%d].account_type',           p0 => i),
+          APEX_JSON.get_varchar2(p_path => 'data[%d].account_subtype',        p0 => i),
+          APEX_JSON.get_varchar2(p_path => 'data[%d].account_marketing_name', p0 => i),
           'pending'
         );
         l_novos := l_novos + 1;
@@ -115,10 +114,10 @@ CREATE OR REPLACE PACKAGE BODY pkg_gf_pierre AS
     COMMIT;
 
     p_resultado := JSON_OBJECT(
-      'fetched'     VALUE l_total,
-      'new'         VALUE l_novos,
-      'start_date'  VALUE l_start_date,
-      'end_date'    VALUE l_end_date
+      'fetched'    VALUE l_total,
+      'new'        VALUE l_novos,
+      'start_date' VALUE l_start_date,
+      'end_date'   VALUE l_end_date
       RETURNING CLOB
     );
   EXCEPTION

@@ -1,8 +1,5 @@
 {
   "rewrites": [
-    {
-      "source": "/ords/:path*",
-      "destination": "https://g20d94e76dfb758-tresaconsult.adb.sa-saopaulo-1.oraclecloudapps.com/ords/:path*"
-    }
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
 }

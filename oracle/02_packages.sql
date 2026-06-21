@@ -95,7 +95,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_gf_pierre AS
           SUBSTR(APEX_JSON.get_varchar2(p_path => 'data[%d].category',               p0 => i), 1, 200),
           APEX_JSON.get_number  (p_path => 'data[%d].amount',                 p0 => i),
           APEX_JSON.get_number  (p_path => 'data[%d].balance',                p0 => i),
-          TO_DATE(l_data_str, 'YYYY-MM-DD'),
+          TO_DATE(SUBSTR(l_data_str, 1, 10), 'YYYY-MM-DD'),
           SUBSTR(APEX_JSON.get_varchar2(p_path => 'data[%d].type',                   p0 => i), 1, 50),
           SUBSTR(APEX_JSON.get_varchar2(p_path => 'data[%d].status',                 p0 => i), 1, 50),
           SUBSTR(APEX_JSON.get_varchar2(p_path => 'data[%d].account_name',           p0 => i), 1, 200),

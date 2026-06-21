@@ -113,17 +113,24 @@ CREATE OR REPLACE PACKAGE BODY pkg_gf_pierre AS
 
     COMMIT;
 
-    p_resultado := JSON_OBJECT(
-      'fetched'    VALUE l_total,
-      'new'        VALUE l_novos,
-      'start_date' VALUE l_start_date,
-      'end_date'   VALUE l_end_date
-      RETURNING CLOB
-    );
+    APEX_JSON.initialize_clob_output;
+    APEX_JSON.open_object;
+    APEX_JSON.write('fetched',    l_total);
+    APEX_JSON.write('new',        l_novos);
+    APEX_JSON.write('start_date', l_start_date);
+    APEX_JSON.write('end_date',   l_end_date);
+    APEX_JSON.close_object;
+    p_resultado := APEX_JSON.get_clob_output;
+    APEX_JSON.free_output;
   EXCEPTION
     WHEN OTHERS THEN
       ROLLBACK;
-      p_resultado := JSON_OBJECT('erro' VALUE SQLERRM RETURNING CLOB);
+      APEX_JSON.initialize_clob_output;
+      APEX_JSON.open_object;
+      APEX_JSON.write('erro', SQLERRM);
+      APEX_JSON.close_object;
+      p_resultado := APEX_JSON.get_clob_output;
+      APEX_JSON.free_output;
   END;
 
   FUNCTION get_saldo  RETURN CLOB IS BEGIN RETURN call_get('get-balance');  END;

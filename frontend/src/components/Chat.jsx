@@ -1,6 +1,13 @@
 import { useState, useEffect, useRef } from 'react'
 import { api } from '../api'
 
+function fmtTime(ts) {
+  if (!ts) return ''
+  const d = new Date(ts)
+  if (isNaN(d)) return ''
+  return d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+}
+
 export default function Chat() {
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
@@ -23,7 +30,7 @@ export default function Chat() {
       const items = histData?.items ?? []
 
       if (items.length > 0) {
-        setMessages(items.map((m, i) => ({ role: m.role, content: m.conteudo, id: i })))
+        setMessages(items.map((m, i) => ({ role: m.role, content: m.conteudo, id: i, timestamp: m.criado_em })))
 
         // Só faz checkin se última mensagem tem mais de 4h
         const lastTime = new Date(items[items.length - 1].criado_em)
@@ -42,7 +49,7 @@ export default function Chat() {
   const doCheckin = async () => {
     try {
       const data = await api.checkin()
-      setMessages(prev => [...prev, { role: 'assistant', content: data.response, id: Date.now() }])
+      setMessages(prev => [...prev, { role: 'assistant', content: data.response, id: Date.now(), timestamp: new Date().toISOString() }])
     } catch (err) {
       setMessages(prev => [...prev, {
         role: 'assistant',
@@ -56,7 +63,8 @@ export default function Chat() {
     const text = input.trim()
     if (!text || loading) return
 
-    setMessages(prev => [...prev, { role: 'user', content: text, id: Date.now() }])
+    const now = new Date().toISOString()
+    setMessages(prev => [...prev, { role: 'user', content: text, id: Date.now(), timestamp: now }])
     setInput('')
     setLoading(true)
 
@@ -65,7 +73,8 @@ export default function Chat() {
       setMessages(prev => [...prev, {
         role: 'assistant',
         content: data.response,
-        id: Date.now()
+        id: Date.now(),
+        timestamp: new Date().toISOString()
       }])
     } catch {
       setMessages(prev => [...prev, {
@@ -90,20 +99,27 @@ export default function Chat() {
     <div className="flex flex-col h-full">
       <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin">
         {messages.map(msg => (
-          <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+          <div key={msg.id} className={`flex items-end gap-2 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             {msg.role === 'assistant' && (
               <div className="w-6 h-6 rounded-full bg-emerald-600 flex items-center justify-center
-                              text-xs font-bold shrink-0 mt-1 mr-2">
+                              text-xs font-bold shrink-0 mb-4">
                 F
               </div>
             )}
-            <div className={`max-w-[82%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap
-              ${msg.role === 'user'
-                ? 'bg-zinc-700 text-white rounded-br-sm'
-                : 'bg-zinc-800 text-zinc-100 rounded-bl-sm'
-              }`}
-            >
-              {msg.content}
+            <div className="max-w-[82%]">
+              <div className={`rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap
+                ${msg.role === 'user'
+                  ? 'bg-zinc-700 text-white rounded-br-sm'
+                  : 'bg-zinc-800 text-zinc-100 rounded-bl-sm'
+                }`}
+              >
+                {msg.content}
+              </div>
+              {msg.timestamp && (
+                <p className={`text-xs text-zinc-600 mt-0.5 ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
+                  {fmtTime(msg.timestamp)}
+                </p>
+              )}
             </div>
           </div>
         ))}

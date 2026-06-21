@@ -218,14 +218,41 @@ BEGIN
     p_module_name => 'gestor-financeiro',
     p_pattern     => 'chat/historico/',
     p_method      => 'GET',
-    p_source_type => ORDS.source_type_query,
+    p_source_type => ORDS.source_type_plsql,
     p_source      =>
-      'SELECT role,
-              conteudo,
-              TO_CHAR(criado_em, ''YYYY-MM-DD"T"HH24:MI:SS'') criado_em
-         FROM gf_chat_mensagem
-        ORDER BY criado_em ASC
-        FETCH FIRST 100 ROWS ONLY'
+      'DECLARE
+         l_json CLOB;
+         l_pos  NUMBER := 1;
+       BEGIN
+         APEX_JSON.initialize_clob_output;
+         APEX_JSON.open_object;
+         APEX_JSON.open_array(''items'');
+         FOR r IN (
+           SELECT role,
+                  conteudo,
+                  TO_CHAR(criado_em, ''YYYY-MM-DD"T"HH24:MI:SS'') criado_em
+             FROM gf_chat_mensagem
+            ORDER BY criado_em ASC
+            FETCH FIRST 100 ROWS ONLY
+         ) LOOP
+           APEX_JSON.open_object;
+           APEX_JSON.write(''role'',      r.role);
+           APEX_JSON.write(''conteudo'',  r.conteudo);
+           APEX_JSON.write(''criado_em'', r.criado_em);
+           APEX_JSON.close_object;
+         END LOOP;
+         APEX_JSON.close_array;
+         APEX_JSON.close_object;
+         l_json := APEX_JSON.get_clob_output;
+         APEX_JSON.free_output;
+         OWA_UTIL.MIME_HEADER(''application/json'', FALSE);
+         OWA_UTIL.HTTP_HEADER_CLOSE;
+         WHILE l_pos <= DBMS_LOB.GETLENGTH(l_json) LOOP
+           HTP.P(DBMS_LOB.SUBSTR(l_json, 32000, l_pos));
+           l_pos := l_pos + 32000;
+         END LOOP;
+         :status_code := 200;
+       END;'
   );
   ORDS.DEFINE_HANDLER(
     p_module_name => 'gestor-financeiro',
